@@ -1,0 +1,71 @@
+heat_template_version: 2016-10-14
+description: AutoScaling Wordpress
+parameters:
+  image:
+    type: string
+    description: Image used for servers
+    default: Ubuntu1804
+  name:
+    type: string
+    description: Namr used for servers
+  key:
+    type: string
+    description: SSH key to connect to the servers
+    default: soisprivatecloudkey
+  flavor:
+    type: string
+    description: flavor used by the web servers
+    default: m1.small
+  network:
+    type: string
+    description: Network used by the server
+    default: 29cc065f-a449-4df9-a6b6-b91978df10f9
+  subnet_id:
+    type: string
+    description: subnet on which the QtApp VM Located
+    default: 86ec957c-ae91-44f2-8f3d-4eaaa69b9150
+  external_network_id:
+    type: string
+    description: UUID of a Neutron external network
+    default: 034c529e-5bd9-4bd3-a9b2-a848fbfea56c
+resources:
+  qtviewappfloat:
+    type: OS::Nova::Server
+    properties:
+      name: {get_param: name} 
+      flavor: {get_param: flavor}
+      image: {get_param: image}
+      key_name: {get_param: key}
+      networks: 
+        - port: { get_resource: server1_port }
+      availability_zone: nova
+      user_data: | 
+            #!/bin/bash 
+            #sudo mkdir /home/ubuntu/data
+            #sudo chown -R ubuntu:ubuntu /home/ubuntu/data  
+            sudo apt-get update
+            #sudo apt-get install -y git
+            sudo apt-get install -y docker.io
+            #sudo docker run -it -d -v /home/ubuntu:/home/ubuntu -p 5901:5901 -p 6080:6080   sreedocker123/ubuntu18lxqtvncnovncfirst:latest
+            #sudo docker run -it -d -v /home/ubuntu/data:/home/ubuntu/data -p 5901:5901 -p 6080:6080 sreedocker123/ubuntu18lxqtvncnovncsecondqtapp:latest
+            sudo docker run -it -d  -p 5901:5901 -p 6080:6080 sreedocker123/ubuntu18lxqtvncnovncsecondqtviewsapp:latest
+            #sudo git clone https://github.com/sreepathysois/qtdashencryptapp.git
+            #cd QtDashEncryptApp 
+            #cd qtdashencryptapp  
+          
+      user_data_format: RAW
+
+  server1_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: network }
+      fixed_ips:
+        - subnet_id: { get_param: subnet_id }
+      security_groups: [soiscloudrules] 
+
+  heat_server_public_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: external_network_id}        
+      port_id: { get_resource: server1_port }
+
